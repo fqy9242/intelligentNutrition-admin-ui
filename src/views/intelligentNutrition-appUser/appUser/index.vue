@@ -250,7 +250,9 @@ function handleUpdate(row) {
 function submitForm() {
   proxy.$refs["appUserRef"].validate(valid => {
     if (valid) {
-      form.value.allergenList = allergenList.value
+      form.value.allergenList = allergenList.value.map(item => {
+        return { allergen: item.allergen }
+      })
       if (form.value.id != null) {
         updateAppUser(form.value).then(response => {
           proxy.$modal.msgSuccess("修改成功")
