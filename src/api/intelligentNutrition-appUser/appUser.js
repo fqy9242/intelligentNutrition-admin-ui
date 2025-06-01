@@ -50,3 +50,24 @@ export const downloadInputTemplate = () => {
     responseType: "blob",
   });
 }
+// 解析批量导入用户
+export const parseInputUser = (excelFile) => {
+  const formData = new FormData();
+  formData.append("excelFile", excelFile);
+  return request({
+    url: "/intelligentNutrition-appUser/appUser/parseExcelToAppUserList",
+    method: "post",
+    data: formData,
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+}
+// 批量导入用户
+export const addBatch = (data) => {
+  return request({
+    url: "/intelligentNutrition-appUser/appUser/addBatch",
+    method: "post",
+    data: data,
+  });
+}

@@ -76,7 +76,115 @@
     </el-table>
 
     <pagination v-show="total>0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize"
-      @pagination="getList" />
+      @pagination="getList" />    <!-- 导入数据预览对话框 -->
+    <el-dialog title="导入数据预览" v-model="importDialogVisible" width="1200px" append-to-body>
+      <div style="margin-bottom: 16px;">
+        <span style="color: #409EFF;">请核实以下导入数据，确认无误后点击提交</span>
+        <span style="margin-left: 20px; color: #67C23A;">共 {{ importPreviewData.length }} 条记录</span>
+      </div>
+        <el-table :data="importPreviewData" border style="width: 100%">
+        <el-table-column label="操作" align="center" width="80" fixed="left">
+          <template #default="scope">
+            <el-button 
+              type="danger" 
+              icon="Delete" 
+              @click="removeImportRecord(scope.$index)"
+              size="small"
+              title="删除此记录"
+            ></el-button>
+          </template>
+        </el-table-column>
+        <el-table-column label="学号" align="center" width="120">
+          <template #default="scope">
+            <el-input v-model="scope.row.studentNumber" placeholder="请输入学号" />
+          </template>
+        </el-table-column>
+        <el-table-column label="姓名" align="center" width="100">
+          <template #default="scope">
+            <el-input v-model="scope.row.name" placeholder="请输入姓名" />
+          </template>
+        </el-table-column>
+        <el-table-column label="登录密码" align="center" width="120">
+          <template #default="scope">
+            <el-input v-model="scope.row.password" placeholder="请输入密码" />
+          </template>
+        </el-table-column>
+        <el-table-column label="头像" align="center" width="80">
+          <template #default="scope">
+            <image-upload v-model="scope.row.avatar" :limit="1" />
+          </template>
+        </el-table-column>
+        <el-table-column label="身高(cm)" align="center" width="100">
+          <template #default="scope">
+            <el-input v-model="scope.row.height" placeholder="身高" />
+          </template>
+        </el-table-column>
+        <el-table-column label="体重(kg)" align="center" width="100">
+          <template #default="scope">
+            <el-input v-model="scope.row.weight" placeholder="体重" />
+          </template>
+        </el-table-column>
+        <el-table-column label="过敏源" align="center">
+          <template #default="scope">
+            <div v-for="(allergen, index) in scope.row.allergenList" :key="index" style="margin-bottom: 4px;">
+              <el-input 
+                v-model="allergen.allergen" 
+                placeholder="请输入过敏源"
+                style="margin-bottom: 4px;"
+              >
+                <template #append>
+                  <el-button 
+                    type="danger" 
+                    icon="Delete" 
+                    @click="removeAllergenFromImport(scope.$index, index)"
+                    size="small"
+                  ></el-button>
+                </template>
+              </el-input>
+            </div>
+            <el-button 
+              type="primary" 
+              icon="Plus" 
+              @click="addAllergenToImport(scope.$index)"
+              size="small"
+              style="width: 100%;"
+            >添加过敏源</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button type="primary" @click="submitImportData">确认导入</el-button>
+          <el-button @click="cancelImport">取消</el-button>
+        </div>
+      </template>
+    </el-dialog>    <!-- 文件上传对话框 -->
+    <el-dialog title="选择导入文件" v-model="uploadDialogVisible" width="500px" append-to-body>
+      <el-upload
+        ref="uploadRef"
+        :limit="1"
+        accept=".xlsx,.xls"
+        :auto-upload="true"
+        :on-change="handleFileChange"
+        :file-list="fileList"
+        :show-file-list="false"
+        drag
+      >
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>        <template #tip>
+          <div class="el-upload__tip">
+            只能上传 .xlsx/.xls 格式文件，选择后将自动上传并预览
+          </div>
+        </template>
+      </el-upload>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="cancelUpload">取消</el-button>
+        </div>
+      </template>
+    </el-dialog>
 
     <!-- 添加或修改app注册用户对话框 -->
     <el-dialog :title="title" v-model="open" width="500px" append-to-body>
@@ -130,7 +238,8 @@
 </template>
 
 <script setup name="AppUser">
-import { listAppUser, getAppUser, delAppUser, addAppUser, updateAppUser, downloadInputTemplate } from "@/api/intelligentNutrition-appUser/appUser"
+import { listAppUser, getAppUser, delAppUser, addAppUser, updateAppUser, downloadInputTemplate, parseInputUser, addBatch } from "@/api/intelligentNutrition-appUser/appUser"
+import { UploadFilled } from '@element-plus/icons-vue'
 
 const { proxy } = getCurrentInstance()
 
@@ -145,9 +254,19 @@ const single = ref(true)
 const multiple = ref(true)
 const total = ref(0)
 const title = ref("")
+
+// 导入相关变量
+const uploadDialogVisible = ref(false)
+const importDialogVisible = ref(false)
+const selectedFile = ref(null)
+const fileList = ref([])
+const importPreviewData = ref([])
+
 // 导入按钮被单击
 const handleImport = () => {
-  // TODO 能够选择文件并导入
+  uploadDialogVisible.value = true
+  fileList.value = []
+  selectedFile.value = null
 }
 const handleDownloadTemplate = () => {
   downloadInputTemplate().then(response => {
@@ -335,6 +454,78 @@ function handleExport() {
   proxy.download('intelligentNutrition-appUser/appUser/export', {
     ...queryParams.value
   }, `appUser_${new Date().getTime()}.xlsx`)
+}
+
+// 文件选择处理
+const handleFileChange = (file) => {
+  selectedFile.value = file.raw
+  fileList.value = [file]
+  
+  // 自动上传并解析文件
+  parseInputUser(file.raw).then(response => {
+    if (response.code === 200) {
+      importPreviewData.value = response.data
+      uploadDialogVisible.value = false
+      importDialogVisible.value = true
+    } else {
+      proxy.$modal.msgError(response.msg || "文件解析失败")
+    }
+  })
+}
+
+// 取消上传
+const cancelUpload = () => {
+  uploadDialogVisible.value = false
+  fileList.value = []
+  selectedFile.value = null
+}
+
+// 添加过敏源到导入数据
+const addAllergenToImport = (userIndex) => {
+  if (!importPreviewData.value[userIndex].allergenList) {
+    importPreviewData.value[userIndex].allergenList = []
+  }
+  importPreviewData.value[userIndex].allergenList.push({
+    allergen: '',
+    studentNumber: importPreviewData.value[userIndex].studentNumber
+  })
+}
+
+// 从导入数据中移除过敏源
+const removeAllergenFromImport = (userIndex, allergenIndex) => {
+  importPreviewData.value[userIndex].allergenList.splice(allergenIndex, 1)
+}
+
+// 删除导入记录
+const removeImportRecord = (index) => {
+  proxy.$modal.confirm('是否确认删除这条导入记录？').then(() => {
+    importPreviewData.value.splice(index, 1)
+    proxy.$modal.msgSuccess("记录删除成功")
+  }).catch(() => {})
+}
+
+// 提交导入数据
+const submitImportData = () => {
+  if (importPreviewData.value.length === 0) {
+    proxy.$modal.msgError("没有可导入的数据")
+    return
+  }
+  
+  // 使用批量添加接口
+  addBatch(importPreviewData.value).then(response => {
+    proxy.$modal.msgSuccess(`成功导入 ${importPreviewData.value.length} 条记录`)
+    importDialogVisible.value = false
+    importPreviewData.value = []
+    getList()
+  }).catch(error => {
+    proxy.$modal.msgError("导入失败：" + (error.msg || error.message || "未知错误"))
+  })
+}
+
+// 取消导入
+const cancelImport = () => {
+  importDialogVisible.value = false
+  importPreviewData.value = []
 }
 
 getList()
