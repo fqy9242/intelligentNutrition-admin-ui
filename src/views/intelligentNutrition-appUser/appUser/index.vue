@@ -77,7 +77,7 @@
 
     <pagination v-show="total>0" :total="total" v-model:page="queryParams.pageNum" v-model:limit="queryParams.pageSize"
       @pagination="getList" />    <!-- 导入数据预览对话框 -->
-    <el-dialog title="导入数据预览" v-model="importDialogVisible" width="1200px" append-to-body>
+    <el-dialog title="导入数据预览" v-model="importDialogVisible" width="1500px" append-to-body>
       <div style="margin-bottom: 16px;">
         <span style="color: #409EFF;">请核实以下导入数据，确认无误后点击提交</span>
         <span style="margin-left: 20px; color: #67C23A;">共 {{ importPreviewData.length }} 条记录</span>
@@ -94,7 +94,7 @@
             ></el-button>
           </template>
         </el-table-column>
-        <el-table-column label="学号" align="center" width="120">
+        <el-table-column label="学号" align="center" width="150">
           <template #default="scope">
             <el-input v-model="scope.row.studentNumber" placeholder="请输入学号" />
           </template>
@@ -104,12 +104,12 @@
             <el-input v-model="scope.row.name" placeholder="请输入姓名" />
           </template>
         </el-table-column>
-        <el-table-column label="登录密码" align="center" width="120">
+        <el-table-column label="登录密码" align="center" width="150">
           <template #default="scope">
             <el-input v-model="scope.row.password" placeholder="请输入密码" />
           </template>
         </el-table-column>
-        <el-table-column label="头像" align="center" width="80">
+        <el-table-column label="头像" align="center" width="180">
           <template #default="scope">
             <image-upload v-model="scope.row.avatar" :limit="1" />
           </template>
