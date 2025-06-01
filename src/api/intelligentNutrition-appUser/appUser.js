@@ -42,3 +42,11 @@ export function delAppUser(id) {
     method: 'delete'
   })
 }
+// 下载批量导入用户模板
+export const downloadInputTemplate = () => {
+  return request({
+    url: "/intelligentNutrition-appUser/appUser/exportInputUserTemplate",
+    method: "get",
+    responseType: "blob",
+  });
+}

@@ -39,6 +39,9 @@
       <el-col :span="1.5">
         <el-button type="primary" plain icon="Upload" @click="handleImport">导入</el-button>
       </el-col>
+      <el-col :span="1.5">
+        <el-button type="primary" plain icon="Download" @click="handleDownloadTemplate">下载导入模板</el-button>
+      </el-col>
       <right-toolbar v-model:showSearch="showSearch" @queryTable="getList"></right-toolbar>
     </el-row>
 
@@ -127,7 +130,7 @@
 </template>
 
 <script setup name="AppUser">
-import { listAppUser, getAppUser, delAppUser, addAppUser, updateAppUser } from "@/api/intelligentNutrition-appUser/appUser"
+import { listAppUser, getAppUser, delAppUser, addAppUser, updateAppUser, downloadInputTemplate } from "@/api/intelligentNutrition-appUser/appUser"
 
 const { proxy } = getCurrentInstance()
 
@@ -146,7 +149,23 @@ const title = ref("")
 const handleImport = () => {
   // TODO 能够选择文件并导入
 }
-
+const handleDownloadTemplate = () => {
+  downloadInputTemplate().then(response => {
+    // 创建下载链接，response 直接就是 blob 数据
+    const blob = new Blob([response], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `app_user_template_${new Date().getTime()}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    proxy.$modal.msgSuccess("模板下载成功")
+  })
+}
 
 
 const data = reactive({
