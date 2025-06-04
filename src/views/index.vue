@@ -4,7 +4,7 @@
 import { ref, onMounted } from 'vue'
 import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-
+import { getUserCountApi } from  '@/api/analysis/analysis'
 // 模拟数据
 const userCount = ref(0)
 const orderCount = ref(0)
@@ -386,11 +386,15 @@ const initBmiChart = () => {
   myChart.setOption(option)
   window.addEventListener('resize', () => myChart.resize())
 }
+// 获取用户数量
+const countUser = async () => {
+  const res = await getUserCountApi()
+  return res.data.total
+}
 
 onMounted(() => {
-  // 模拟数据加载
   setTimeout(() => {
-    animateNumber(userCount, 12345)
+    animateNumber(userCount, countUser())
     animateNumber(orderCount, 8976)
     animateNumber(productCount, 156)
     animateNumber(reviewCount, 2134)
@@ -432,7 +436,7 @@ onMounted(() => {
             <el-icon :size="32"><TrendCharts /></el-icon>
           </div>
           <div class="stat-info">
-            <h3 class="stat-title">营养方案</h3>
+            <h3 class="stat-title">用户日均均运动时间(分钟)</h3>
             <div class="stat-number">{{ orderCount.toLocaleString() }}</div>
             <div class="stat-change positive">
               <el-icon><TrendCharts /></el-icon>
@@ -448,7 +452,7 @@ onMounted(() => {
             <el-icon :size="32"><Gift /></el-icon>
           </div>
           <div class="stat-info">
-            <h3 class="stat-title">食品库</h3>
+            <h3 class="stat-title">今日平均健康分数 </h3>
             <div class="stat-number">{{ productCount.toLocaleString() }}</div>
             <div class="stat-change positive">
               <el-icon><TrendCharts /></el-icon>
@@ -464,7 +468,7 @@ onMounted(() => {
             <el-icon :size="32"><Star /></el-icon>
           </div>
           <div class="stat-info">
-            <h3 class="stat-title">用户评价</h3>
+            <h3 class="stat-title">本月IBM合格率</h3>
             <div class="stat-number">{{ reviewCount.toLocaleString() }}</div>
             <div class="stat-change positive">
               <el-icon><TrendCharts /></el-icon>
