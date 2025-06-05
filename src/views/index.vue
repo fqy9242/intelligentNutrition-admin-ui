@@ -4,12 +4,18 @@
 import { ref, onMounted } from 'vue'
 import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getUserCountApi } from  '@/api/analysis/analysis'
-// 模拟数据
+import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi, getTodayHealthCheckInCountApi } from  '@/api/analysis/analysis'
+// 统计数据
 const userCount = ref(0)
-const orderCount = ref(0)
-const productCount = ref(0)
-const reviewCount = ref(0)
+const avgExerciseTime = ref(0)
+const avgHealthScore = ref(0)
+const todayCheckInCount = ref(0)
+
+// 变化百分比
+const userCountChange = ref('+0%')
+const exerciseTimeChange = ref('+0%')
+const healthScoreChange = ref('+0%')
+const checkInCountChange = ref('+0%')
 
 // 图表配置
 const userTrendChart = ref(null)
@@ -29,6 +35,50 @@ const animateNumber = (target, finalValue) => {
     }
     target.value = Math.floor(current)
   }, 30)
+}
+
+// 获取统计数据
+const fetchStatsData = async () => {
+    // 获取用户数量
+    const userCountRes = await getUserCountApi()
+    const userTotal = userCountRes.data.total
+    const lastMonthUserTotal = userCountRes.data.lastMonthTotal
+    
+    // 获取用户日均运动时长
+    const exerciseRes = await getUserAvgExerciseTimeApi()
+    const exerciseTime = exerciseRes.data.dayAdvExerciseMinute
+    const lastMonthExerciseTime = exerciseRes.data.lastMonthDayAdvExerciseMinute
+    
+    // 获取本周平均健康分数
+    const healthScoreRes = await getUserAvgHealthScoreApi()
+    const healthScore = healthScoreRes.data.value
+    const lastWeekHealthScore = healthScoreRes.data.lastValue
+    
+    // 获取今日健康打卡人数
+    const checkInRes = await getTodayHealthCheckInCountApi()
+    const checkInCount = checkInRes.data.value
+    const yesterdayCheckInCount = checkInRes.data.lastValue
+    
+    // 计算变化百分比
+    const calculateChange = (current, previous) => {
+      if (previous === 0) return '+0%'
+      const change = ((current - previous) / previous * 100).toFixed(1)
+      return change >= 0 ? `+${change}%` : `${change}%`
+    }
+    
+    // 更新变化百分比
+    userCountChange.value = calculateChange(userTotal, lastMonthUserTotal)
+    exerciseTimeChange.value = calculateChange(exerciseTime, lastMonthExerciseTime)
+    healthScoreChange.value = calculateChange(healthScore, lastWeekHealthScore)
+    checkInCountChange.value = calculateChange(checkInCount, yesterdayCheckInCount)
+    
+    // 使用动画效果更新数值
+    setTimeout(() => {
+      animateNumber(userCount, userTotal)
+      animateNumber(avgExerciseTime, Math.floor(exerciseTime))
+      animateNumber(avgHealthScore, Math.floor(healthScore))
+      animateNumber(todayCheckInCount, checkInCount)
+    }, 500)
 }
 
 // 初始化用户趋势图表
@@ -382,24 +432,15 @@ const initBmiChart = () => {
       }
     ]
   }
-  
-  myChart.setOption(option)
+    myChart.setOption(option)
   window.addEventListener('resize', () => myChart.resize())
-}
-// 获取用户数量
-const countUser = async () => {
-  const res = await getUserCountApi()
-  return res.data.total
 }
 
 onMounted(() => {
-  setTimeout(() => {
-    animateNumber(userCount, countUser())
-    animateNumber(orderCount, 8976)
-    animateNumber(productCount, 156)
-    animateNumber(reviewCount, 2134)
-  }, 500)
-    // 初始化图表
+  // 获取统计数据
+  fetchStatsData()
+  
+  // 初始化图表
   setTimeout(() => {
     initUserTrendChart()
     initNutritionChart()
@@ -421,62 +462,52 @@ onMounted(() => {
           </div>
           <div class="stat-info">
             <h3 class="stat-title">注册用户</h3>
-            <div class="stat-number">{{ userCount.toLocaleString() }}</div>
-            <div class="stat-change positive">
+            <div class="stat-number">{{ userCount.toLocaleString() }}</div>            <div class="stat-change positive">
               <el-icon><TrendCharts /></el-icon>
-              <span>+12% 较上月</span>
+              <span>{{ userCountChange }} 较上月</span>
             </div>
           </div>
         </div>
-      </el-card>
-
-      <el-card class="stat-card order-card" shadow="hover">
+      </el-card>      <el-card class="stat-card order-card" shadow="hover">
         <div class="stat-content">
           <div class="stat-icon">
             <el-icon :size="32"><TrendCharts /></el-icon>
           </div>
           <div class="stat-info">
-            <h3 class="stat-title">用户日均均运动时间(分钟)</h3>
-            <div class="stat-number">{{ orderCount.toLocaleString() }}</div>
-            <div class="stat-change positive">
+            <h3 class="stat-title">用户日均运动时间(分钟)</h3>
+            <div class="stat-number">{{ avgExerciseTime.toLocaleString() }}</div>            <div class="stat-change positive">
               <el-icon><TrendCharts /></el-icon>
-              <span>+8% 较上月</span>
+              <span>{{ exerciseTimeChange }} 较上月</span>
             </div>
           </div>
         </div>
-      </el-card>
-
-      <el-card class="stat-card product-card" shadow="hover">
-        <div class="stat-content">
-          <div class="stat-icon">
-            <el-icon :size="32"><Gift /></el-icon>
-          </div>
-          <div class="stat-info">
-            <h3 class="stat-title">今日平均健康分数 </h3>
-            <div class="stat-number">{{ productCount.toLocaleString() }}</div>
-            <div class="stat-change positive">
-              <el-icon><TrendCharts /></el-icon>
-              <span>+5% 较上月</span>
-            </div>
-          </div>
-        </div>
-      </el-card>
-
-      <el-card class="stat-card review-card" shadow="hover">
+      </el-card>      <el-card class="stat-card product-card" shadow="hover">
         <div class="stat-content">
           <div class="stat-icon">
             <el-icon :size="32"><Star /></el-icon>
           </div>
           <div class="stat-info">
-            <h3 class="stat-title">本月IBM合格率</h3>
-            <div class="stat-number">{{ reviewCount.toLocaleString() }}</div>
-            <div class="stat-change positive">
+            <h3 class="stat-title">本周平均健康分数</h3>
+            <div class="stat-number">{{ avgHealthScore.toLocaleString() }}</div>            <div class="stat-change positive">
               <el-icon><TrendCharts /></el-icon>
-              <span>+15% 较上月</span>
+              <span>{{ healthScoreChange }} 较上周</span>
             </div>
           </div>
         </div>
-      </el-card>    </div>
+      </el-card>      <el-card class="stat-card review-card" shadow="hover">
+        <div class="stat-content">
+          <div class="stat-icon">
+            <el-icon :size="32"><Star /></el-icon>
+          </div>
+          <div class="stat-info">
+            <h3 class="stat-title">今日健康打卡人数</h3>
+            <div class="stat-number">{{ todayCheckInCount.toLocaleString() }}</div>            <div class="stat-change positive">
+              <el-icon><TrendCharts /></el-icon>
+              <span>{{ checkInCountChange }} 较昨日</span>
+            </div>
+          </div>
+        </div>
+      </el-card></div>
 
     <!-- 图表分析区域 -->
     <div class="charts-section">
