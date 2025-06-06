@@ -29,3 +29,9 @@ export const getUserCountTrendApi = () => {
     url: "/admin/analysis/userTrend"
   })
 }
+// 统计营养摄入成分分析
+export const getNutritionAnalysisApi = () => {
+  return request({
+    url: "/admin/analysis/analysisNutritional"
+  })
+}

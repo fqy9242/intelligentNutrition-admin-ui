@@ -5,18 +5,14 @@ import { ref, onMounted } from 'vue'
 import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi,
-  getTodayHealthCheckInCountApi, getUserCountTrendApi } from  '@/api/analysis/analysis'
+  getTodayHealthCheckInCountApi, getUserCountTrendApi, getNutritionAnalysisApi } from  '@/api/analysis/analysis'
 // 统计数据
 const userCount = ref(0)
 const avgExerciseTime = ref(0)
 const avgHealthScore = ref(0)
 const todayCheckInCount = ref(0)
 const userTrentChartData = ref(null)
-
-
-
-
-
+const nutritionData = ref(null)
 // 变化百分比
 const userCountChange = ref('+0%')
 const exerciseTimeChange = ref('+0%')
@@ -63,12 +59,12 @@ const fetchStatsData = async () => {
     // 获取今日健康打卡人数
     const checkInRes = await getTodayHealthCheckInCountApi()
     const checkInCount = checkInRes.data.value
-    const yesterdayCheckInCount = checkInRes.data.lastValue
-
-    // 获取用户增长趋势图表数据
-  const res = await getUserCountTrendApi()
-  userTrentChartData.value = res.data
-
+    const yesterdayCheckInCount = checkInRes.data.lastValue    // 获取用户增长趋势图表数据
+    const res = await getUserCountTrendApi()
+    userTrentChartData.value = res.data
+    // 获取营养分析数据
+    const nutritionResponse = await getNutritionAnalysisApi()
+    nutritionData.value = nutritionResponse.data
     // 计算变化百分比
     const calculateChange = (current, previous) => {
       if (previous === 0) return '+0%'
@@ -160,6 +156,76 @@ const initNutritionChart = () => {
   const chartDom = nutritionDistChart.value
   const myChart = echarts.init(chartDom)
   
+  console.log('初始化营养图表时的数据:', nutritionData.value)
+  
+  // 转换营养数据格式
+  let chartData = []
+  if (nutritionData.value && nutritionData.value.name && nutritionData.value.value) {
+    console.log('使用后端数据生成图表')
+    const colors = [
+      { start: '#667eea', end: '#764ba2' },
+      { start: '#f093fb', end: '#f5576c' },
+      { start: '#4facfe', end: '#00f2fe' },
+      { start: '#43e97b', end: '#38f9d7' }
+    ]
+    
+    chartData = nutritionData.value.name.map((name, index) => ({
+      value: nutritionData.value.value[index] || 0,
+      name: name,
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: colors[index % colors.length].start },
+          { offset: 1, color: colors[index % colors.length].end }
+        ])
+      }
+    }))
+  } else {
+    console.log('使用默认数据生成图表')
+    // 使用默认数据作为备用
+    chartData = [
+      { 
+        value: 35, 
+        name: '蛋白质',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#667eea' },
+            { offset: 1, color: '#764ba2' }
+          ])
+        }
+      },
+      { 
+        value: 28, 
+        name: '碳水化合物',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#f093fb' },
+            { offset: 1, color: '#f5576c' }
+          ])
+        }
+      },
+      { 
+        value: 20, 
+        name: '脂肪',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#4facfe' },
+            { offset: 1, color: '#00f2fe' }
+          ])
+        }
+      },
+      { 
+        value: 17, 
+        name: '膳食纤维',
+        itemStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: '#43e97b' },
+            { offset: 1, color: '#38f9d7' }
+          ])
+        }
+      }
+    ]
+  }
+  
   const option = {
     title: {
       text: '营养成分分布',
@@ -204,48 +270,7 @@ const initNutritionChart = () => {
         labelLine: {
           show: false
         },
-        data: [
-          { 
-            value: 35, 
-            name: '蛋白质',
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#667eea' },
-                { offset: 1, color: '#764ba2' }
-              ])
-            }
-          },
-          { 
-            value: 28, 
-            name: '碳水化合物',
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#f093fb' },
-                { offset: 1, color: '#f5576c' }
-              ])
-            }
-          },
-          { 
-            value: 20, 
-            name: '脂肪',
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#4facfe' },
-                { offset: 1, color: '#00f2fe' }
-              ])
-            }
-          },
-          { 
-            value: 17, 
-            name: '维生素',
-            itemStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: '#43e97b' },
-                { offset: 1, color: '#38f9d7' }
-              ])
-            }
-          }
-        ]
+        data: chartData
       }
     ]
   }
@@ -428,17 +453,17 @@ const initBmiChart = () => {
   window.addEventListener('resize', () => myChart.resize())
 }
 
-onMounted(() => {
-  // 获取统计数据
-  fetchStatsData()
+onMounted(async () => {
+  // 先获取统计数据
+  await fetchStatsData()
   
-  // 初始化图表
+  // 数据获取完成后再初始化图表
   setTimeout(() => {
     initUserTrendChart()
     initNutritionChart()
     initBmiChart()
     initActivityChart()
-  }, 1000)
+  }, 100)
 })
 </script>
 
