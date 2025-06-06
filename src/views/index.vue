@@ -4,7 +4,8 @@
 import { ref, onMounted } from 'vue'
 import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi, getTodayHealthCheckInCountApi } from  '@/api/analysis/analysis'
+import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi,
+   getTodayHealthCheckInCountApi } from  '@/api/analysis/analysis'
 // 统计数据
 const userCount = ref(0)
 const avgExerciseTime = ref(0)
