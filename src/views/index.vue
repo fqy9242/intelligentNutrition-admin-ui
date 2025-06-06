@@ -5,12 +5,17 @@ import { ref, onMounted } from 'vue'
 import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi,
-   getTodayHealthCheckInCountApi } from  '@/api/analysis/analysis'
+  getTodayHealthCheckInCountApi, getUserCountTrendApi } from  '@/api/analysis/analysis'
 // 统计数据
 const userCount = ref(0)
 const avgExerciseTime = ref(0)
 const avgHealthScore = ref(0)
 const todayCheckInCount = ref(0)
+const userTrentChartData = ref(null)
+
+
+
+
 
 // 变化百分比
 const userCountChange = ref('+0%')
@@ -30,7 +35,7 @@ const animateNumber = (target, finalValue) => {
   const increment = finalValue / 60
   const timer = setInterval(() => {
     current += increment
-    if (current >= finalValue) {
+    if (current >= finalValue) { 
       current = finalValue
       clearInterval(timer)
     }
@@ -59,7 +64,11 @@ const fetchStatsData = async () => {
     const checkInRes = await getTodayHealthCheckInCountApi()
     const checkInCount = checkInRes.data.value
     const yesterdayCheckInCount = checkInRes.data.lastValue
-    
+
+    // 获取用户增长趋势图表数据
+  const res = await getUserCountTrendApi()
+  userTrentChartData.value = res.data
+
     // 计算变化百分比
     const calculateChange = (current, previous) => {
       if (previous === 0) return '+0%'
@@ -105,7 +114,7 @@ const initUserTrendChart = () => {
     },
     legend: {
       bottom: 10,
-      data: ['新增用户', '活跃用户']
+      data: ['新增用户']
     },
     grid: {
       left: '3%',
@@ -115,7 +124,7 @@ const initUserTrendChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: ['1月', '2月', '3月', '4月', '5月', '6月']
+      data: userTrentChartData.value.xaxis
     },
     yAxis: {
       type: 'value'
@@ -137,25 +146,7 @@ const initUserTrendChart = () => {
             { offset: 1, color: 'rgba(118, 75, 162, 0.1)' }
           ])
         },
-        data: [1200, 1320, 1010, 1340, 1590, 1820]
-      },
-      {
-        name: '活跃用户',
-        type: 'line',
-        smooth: true,
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#f093fb' },
-            { offset: 1, color: '#f5576c' }
-          ])
-        },
-        areaStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: 'rgba(240, 147, 251, 0.3)' },
-            { offset: 1, color: 'rgba(245, 87, 108, 0.1)' }
-          ])
-        },
-        data: [800, 932, 901, 934, 1290, 1330]
+        data: userTrentChartData.value.yaxis
       }
     ]
   }

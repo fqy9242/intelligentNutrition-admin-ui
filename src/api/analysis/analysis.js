@@ -23,3 +23,9 @@ export const getTodayHealthCheckInCountApi = () => {
     url: "/admin/analysis/countTodayHealthCheckIn"
   })
 }
+// 统计用户数增长趋势接口
+export const getUserCountTrendApi = () => {
+  return request({
+    url: "/admin/analysis/userTrend"
+  })
+}
