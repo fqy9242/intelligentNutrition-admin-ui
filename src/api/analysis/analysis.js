@@ -35,3 +35,9 @@ export const getNutritionAnalysisApi = () => {
     url: "/admin/analysis/analysisNutritional"
   })
 }
+// 统计本周用户活动
+export const getThisWeekUserActivityApi = () => {
+  return request({
+    url: "/admin/analysis/analysisUserActivity"
+  })
+}

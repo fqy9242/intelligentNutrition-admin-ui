@@ -5,7 +5,8 @@ import { ref, onMounted } from 'vue'
 import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi,
-  getTodayHealthCheckInCountApi, getUserCountTrendApi, getNutritionAnalysisApi } from  '@/api/analysis/analysis'
+  getTodayHealthCheckInCountApi, getUserCountTrendApi, getNutritionAnalysisApi,
+   getThisWeekUserActivityApi } from  '@/api/analysis/analysis'
 // 统计数据
 const userCount = ref(0)
 const avgExerciseTime = ref(0)
@@ -13,6 +14,7 @@ const avgHealthScore = ref(0)
 const todayCheckInCount = ref(0)
 const userTrentChartData = ref(null)
 const nutritionData = ref(null)
+const activityData = ref(null)
 // 变化百分比
 const userCountChange = ref('+0%')
 const exerciseTimeChange = ref('+0%')
@@ -61,10 +63,13 @@ const fetchStatsData = async () => {
     const checkInCount = checkInRes.data.value
     const yesterdayCheckInCount = checkInRes.data.lastValue    // 获取用户增长趋势图表数据
     const res = await getUserCountTrendApi()
-    userTrentChartData.value = res.data
-    // 获取营养分析数据
+    userTrentChartData.value = res.data    // 获取营养分析数据
     const nutritionResponse = await getNutritionAnalysisApi()
     nutritionData.value = nutritionResponse.data
+    
+    // 获取本周用户活动数据
+    const activityResponse = await getThisWeekUserActivityApi()
+    activityData.value = activityResponse.data
     // 计算变化百分比
     const calculateChange = (current, previous) => {
       if (previous === 0) return '+0%'
@@ -156,12 +161,9 @@ const initNutritionChart = () => {
   const chartDom = nutritionDistChart.value
   const myChart = echarts.init(chartDom)
   
-  console.log('初始化营养图表时的数据:', nutritionData.value)
-  
   // 转换营养数据格式
   let chartData = []
   if (nutritionData.value && nutritionData.value.name && nutritionData.value.value) {
-    console.log('使用后端数据生成图表')
     const colors = [
       { start: '#667eea', end: '#764ba2' },
       { start: '#f093fb', end: '#f5576c' },
@@ -179,51 +181,6 @@ const initNutritionChart = () => {
         ])
       }
     }))
-  } else {
-    console.log('使用默认数据生成图表')
-    // 使用默认数据作为备用
-    chartData = [
-      { 
-        value: 35, 
-        name: '蛋白质',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#667eea' },
-            { offset: 1, color: '#764ba2' }
-          ])
-        }
-      },
-      { 
-        value: 28, 
-        name: '碳水化合物',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#f093fb' },
-            { offset: 1, color: '#f5576c' }
-          ])
-        }
-      },
-      { 
-        value: 20, 
-        name: '脂肪',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#4facfe' },
-            { offset: 1, color: '#00f2fe' }
-          ])
-        }
-      },
-      { 
-        value: 17, 
-        name: '膳食纤维',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#43e97b' },
-            { offset: 1, color: '#38f9d7' }
-          ])
-        }
-      }
-    ]
   }
   
   const option = {
@@ -284,42 +241,45 @@ const initActivityChart = () => {
   const chartDom = activityChart.value
   const myChart = echarts.init(chartDom)
   
-  const option = {
-    title: {
-      text: '用户活动统计',
-      left: 'center',
-      textStyle: {
-        fontSize: 16,
-        fontWeight: 600,
-        color: '#333'
-      }
-    },
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: {
-        type: 'shadow'
-      }
-    },
-    legend: {
-      bottom: 10,
-      data: ['查看营养方案', '添加食品记录', '健康测评']
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-    },
-    yAxis: {
-      type: 'value'
-    },
-    series: [
+  // 准备图表配置的默认值
+  let seriesData = []
+  let xAxisData = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  
+  // 如果有后端数据，使用后端数据
+  if (activityData.value && activityData.value.series && activityData.value.xaxis) {
+    xAxisData = activityData.value.xaxis
+    // 创建名称映射
+    const nameMapping = {
+      '运动记录': '添加运动记录',
+      '膳食记录': '添加食品记录',
+      '健康测试': '健康测评'
+    }
+    
+    // 定义颜色
+    const colors = [
+      { start: '#667eea', end: '#764ba2' },  // 添加运动记录
+      { start: '#f093fb', end: '#f5576c' },  // 添加食品记录
+      { start: '#43e97b', end: '#38f9d7' }   // 健康测评
+    ]
+    
+    seriesData = activityData.value.series.map((item, index) => ({
+      name: nameMapping[item.name] || item.name,
+      type: 'bar',
+      stack: 'total',
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: colors[index % colors.length].start },
+          { offset: 1, color: colors[index % colors.length].end }
+        ])
+      },
+      data: item.data
+    }))
+  } else {
+    console.log('使用默认数据生成活动图表')
+    // 使用默认数据作为备用
+    seriesData = [
       {
-        name: '查看营养方案',
+        name: '添加运动记录',
         type: 'bar',
         stack: 'total',
         itemStyle: {
@@ -356,7 +316,44 @@ const initActivityChart = () => {
       }
     ]
   }
-    myChart.setOption(option)
+  
+  const option = {
+    title: {
+      text: '用户活动统计',
+      left: 'center',
+      textStyle: {
+        fontSize: 16,
+        fontWeight: 600,
+        color: '#333'
+      }
+    },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    legend: {
+      bottom: 10,
+      data: ['添加运动记录', '添加食品记录', '健康测评']
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: xAxisData
+    },
+    yAxis: {
+      type: 'value'
+    },
+    series: seriesData
+  }
+  
+  myChart.setOption(option)
   window.addEventListener('resize', () => myChart.resize())
 }
 
