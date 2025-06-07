@@ -41,3 +41,9 @@ export const getThisWeekUserActivityApi = () => {
     url: "/admin/analysis/analysisUserActivity"
   })
 }
+// 统计用户平均bmi
+export const getUserAvgBmiApi = () => {
+  return request({
+    url: "/admin/analysis/bmiAdvTrend",
+  });
+}

@@ -6,7 +6,7 @@ import { User, TrendCharts, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { getUserCountApi, getUserAvgExerciseTimeApi, getUserAvgHealthScoreApi,
   getTodayHealthCheckInCountApi, getUserCountTrendApi, getNutritionAnalysisApi,
-   getThisWeekUserActivityApi } from  '@/api/analysis/analysis'
+  getThisWeekUserActivityApi, getUserAvgBmiApi } from  '@/api/analysis/analysis'
 // 统计数据
 const userCount = ref(0)
 const avgExerciseTime = ref(0)
@@ -15,6 +15,7 @@ const todayCheckInCount = ref(0)
 const userTrentChartData = ref(null)
 const nutritionData = ref(null)
 const activityData = ref(null)
+const bmiData = ref(null)
 // 变化百分比
 const userCountChange = ref('+0%')
 const exerciseTimeChange = ref('+0%')
@@ -66,10 +67,13 @@ const fetchStatsData = async () => {
     userTrentChartData.value = res.data    // 获取营养分析数据
     const nutritionResponse = await getNutritionAnalysisApi()
     nutritionData.value = nutritionResponse.data
-    
-    // 获取本周用户活动数据
+      // 获取本周用户活动数据
     const activityResponse = await getThisWeekUserActivityApi()
     activityData.value = activityResponse.data
+    
+    // 获取BMI趋势数据
+    const bmiResponse = await getUserAvgBmiApi()
+    bmiData.value = bmiResponse.data
     // 计算变化百分比
     const calculateChange = (current, previous) => {
       if (previous === 0) return '+0%'
@@ -245,7 +249,6 @@ const initActivityChart = () => {
   let seriesData = []
   let xAxisData = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
   
-  // 如果有后端数据，使用后端数据
   if (activityData.value && activityData.value.series && activityData.value.xaxis) {
     xAxisData = activityData.value.xaxis
     // 创建名称映射
@@ -274,47 +277,6 @@ const initActivityChart = () => {
       },
       data: item.data
     }))
-  } else {
-    console.log('使用默认数据生成活动图表')
-    // 使用默认数据作为备用
-    seriesData = [
-      {
-        name: '添加运动记录',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#667eea' },
-            { offset: 1, color: '#764ba2' }
-          ])
-        },
-        data: [120, 132, 101, 134, 90, 230, 210]
-      },
-      {
-        name: '添加食品记录',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#f093fb' },
-            { offset: 1, color: '#f5576c' }
-          ])
-        },
-        data: [220, 182, 191, 234, 290, 330, 310]
-      },
-      {
-        name: '健康测评',
-        type: 'bar',
-        stack: 'total',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#43e97b' },
-            { offset: 1, color: '#38f9d7' }
-          ])
-        },
-        data: [150, 232, 201, 154, 190, 330, 410]
-      }
-    ]
   }
   
   const option = {
@@ -362,6 +324,26 @@ const initBmiChart = () => {
   const chartDom = bmiChart.value
   const myChart = echarts.init(chartDom)
   
+  // 使用后端数据或默认数据
+  let xAxisData = ['1月', '2月', '3月', '4月', '5月', '6月']
+  let seriesData = [22.8, 23.2, 22.9, 23.5, 23.1, 22.7]
+  let yAxisMin = 20
+  let yAxisMax = 26
+  
+  if (bmiData.value && bmiData.value.xaxis && bmiData.value.yaxis) {
+    xAxisData = bmiData.value.xaxis
+    seriesData = bmiData.value.yaxis
+    
+    // 动态计算Y轴范围，确保显示所有数据
+    const validData = seriesData.filter(val => val > 0)
+    if (validData.length > 0) {
+      const minValue = Math.min(...validData)
+      const maxValue = Math.max(...validData)
+      yAxisMin = Math.max(0, minValue - 2)
+      yAxisMax = maxValue + 2
+    }
+  }
+  
   const option = {
     title: {
       text: 'BMI平均值趋势',
@@ -375,7 +357,11 @@ const initBmiChart = () => {
     tooltip: {
       trigger: 'axis',
       formatter: function(params) {
-        return `${params[0].name}<br/>BMI平均值: ${params[0].value}`
+        const value = params[0].value
+        if (value === 0) {
+          return `${params[0].name}<br/>BMI平均值: 暂无数据`
+        }
+        return `${params[0].name}<br/>BMI平均值: ${value}`
       }
     },
     legend: {
@@ -390,12 +376,12 @@ const initBmiChart = () => {
     },
     xAxis: {
       type: 'category',
-      data: ['1月', '2月', '3月', '4月', '5月', '6月']
+      data: xAxisData
     },
     yAxis: {
       type: 'value',
-      min: 20,
-      max: 26,
+      min: yAxisMin,
+      max: yAxisMax,
       axisLabel: {
         formatter: '{value}'
       }
@@ -442,11 +428,12 @@ const initBmiChart = () => {
             formatter: '{b}'
           }
         },
-        data: [22.8, 23.2, 22.9, 23.5, 23.1, 22.7]
+        data: seriesData
       }
     ]
   }
-    myChart.setOption(option)
+  
+  myChart.setOption(option)
   window.addEventListener('resize', () => myChart.resize())
 }
 
